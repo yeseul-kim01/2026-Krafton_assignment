@@ -24,8 +24,7 @@
 - heappop(): 최소값 제거
 """
 
-import heapq
-
+import heapq ## 자주 쓰임! 
 def process_emergency_room(patients):
     """
     환자를 우선순위에 따라 처리
@@ -39,17 +38,21 @@ def process_emergency_room(patients):
     # TODO: 빈 힙 생성
     heap = []
     
-    
+    for p in patients:
+        heapq.heappush(heap,(p[1],p[0]))
+
+    print(heapq.heappop(heap))
     # TODO: 모든 환자를 힙에 추가
-    pass
-        
     processed = []
+
+    while heap:
+        pr, name= heapq.heappop(heap)
+        print(f"처리: {name} (우선순위: {pr})")
+        processed.append(name)
     
     # TODO: 힙이 비어있지 않은 동안 반복
     ## 힙에서 우선순위가 가장 높은 환자 꺼내기
-    ## 환자 처리
-    pass
-        
+    ## 환자 처리        
     return processed
 
 # 테스트 케이스
