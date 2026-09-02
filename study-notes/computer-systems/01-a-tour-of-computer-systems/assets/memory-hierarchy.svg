@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 600" width="780" height="600" font-family="'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif" role="img" aria-label="저장장치 계층: 위에서부터 레지스터, L1~L3 캐시, 메인 메모리, 로컬 디스크, 원격 저장소로 갈수록 느리고 커지고 싸진다">
+  <rect x="0" y="0" width="780" height="600" rx="16" fill="#ffffff" stroke="#d7dbe3"/>
+
+  <!-- top / bottom annotations -->
+  <text x="390" y="34" text-anchor="middle" font-size="13" font-weight="700" fill="#2b9560">↑ CPU에 가까울수록 — 빠르다 · 작다 · 비싸다</text>
+  <text x="390" y="52" text-anchor="middle" font-size="11" fill="#565f6d">각 층은 바로 아래층의 "캐시" 역할을 한다</text>
+  <text x="390" y="588" text-anchor="middle" font-size="13" font-weight="700" fill="#bd7a15">↓ 멀수록 — 느리다 · 크다 · 싸다</text>
+
+  <!-- L0 -->
+  <rect x="305" y="70" width="170" height="60" rx="8" fill="#d7efe2" stroke="#2b9560" stroke-width="1.5"/>
+  <text x="390" y="96" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L0 · 레지스터</text>
+  <text x="390" y="114" text-anchor="middle" font-size="10.5" fill="#565f6d">CPU 안 · 1 사이클</text>
+
+  <!-- L1 -->
+  <rect x="268" y="136" width="244" height="60" rx="8" fill="#d7efe2" stroke="#2b9560" stroke-width="1.5"/>
+  <text x="390" y="162" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L1 캐시</text>
+  <text x="390" y="180" text-anchor="middle" font-size="10.5" fill="#565f6d">SRAM · 코어 전용 · 수 사이클</text>
+
+  <!-- L2 -->
+  <rect x="231" y="202" width="318" height="60" rx="8" fill="#e0f0e8" stroke="#2b9560" stroke-width="1.5"/>
+  <text x="390" y="228" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L2 캐시</text>
+  <text x="390" y="246" text-anchor="middle" font-size="10.5" fill="#565f6d">SRAM · 더 크지만 조금 느림</text>
+
+  <!-- L3 -->
+  <rect x="194" y="268" width="392" height="60" rx="8" fill="#dce9fa" stroke="#1f6fd0" stroke-width="1.5"/>
+  <text x="390" y="294" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L3 캐시</text>
+  <text x="390" y="312" text-anchor="middle" font-size="10.5" fill="#565f6d">SRAM · 여러 코어가 공유</text>
+
+  <!-- L4 -->
+  <rect x="157" y="334" width="466" height="60" rx="8" fill="#dce9fa" stroke="#1f6fd0" stroke-width="1.5"/>
+  <text x="390" y="360" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L4 · 메인 메모리 (DRAM)</text>
+  <text x="390" y="378" text-anchor="middle" font-size="10.5" fill="#565f6d">실행 중 데이터 · 앱의 힙/변수 · Redis도 여기</text>
+
+  <!-- L5 -->
+  <rect x="120" y="400" width="540" height="60" rx="8" fill="#f6e6c8" stroke="#bd7a15" stroke-width="1.5"/>
+  <text x="390" y="426" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L5 · 로컬 디스크 (SSD/HDD)</text>
+  <text x="390" y="444" text-anchor="middle" font-size="10.5" fill="#565f6d">영구 저장 · DB의 실제 데이터 파일이 여기</text>
+
+  <!-- L6 -->
+  <rect x="83" y="466" width="614" height="60" rx="8" fill="#f6e6c8" stroke="#bd7a15" stroke-width="1.5"/>
+  <text x="390" y="492" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">L6 · 원격 저장소</text>
+  <text x="390" y="510" text-anchor="middle" font-size="10.5" fill="#565f6d">네트워크 너머 · 다른 서버의 DB · 외부 API · 클라우드 스토리지</text>
+</svg>

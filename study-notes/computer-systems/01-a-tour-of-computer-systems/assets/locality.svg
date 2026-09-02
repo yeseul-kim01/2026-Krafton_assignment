@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 300" width="780" height="300" font-family="'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif" role="img" aria-label="시간 지역성은 같은 데이터를 반복 접근하는 것, 공간 지역성은 방금 쓴 것 근처의 데이터를 함께 접근하는 것이다">
+  <defs>
+    <marker id="la" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f6fd0"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="780" height="300" rx="16" fill="#ffffff" stroke="#d7dbe3"/>
+  <line x1="390" y1="24" x2="390" y2="276" stroke="#d7dbe3" stroke-width="1" stroke-dasharray="4 4"/>
+
+  <!-- LEFT: temporal -->
+  <text x="40" y="42" font-size="14" font-weight="700" fill="#1a2029">시간 지역성 (Temporal)</text>
+  <text x="40" y="62" font-size="11" fill="#565f6d">방금 쓴 데이터를 곧 또 쓴다</text>
+
+  <!-- same product accessed 3 times -->
+  <rect x="140" y="86" width="130" height="50" rx="8" fill="#d7efe2" stroke="#2b9560" stroke-width="1.5"/>
+  <text x="205" y="110" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1a2029">상품 #42</text>
+  <text x="205" y="127" text-anchor="middle" font-size="9.5" fill="#565f6d">최근 본 상품</text>
+
+  <!-- timeline -->
+  <line x1="60" y1="220" x2="350" y2="220" stroke="#d7dbe3" stroke-width="1.5"/>
+  <text x="350" y="238" text-anchor="end" font-size="10" fill="#565f6d">시간 →</text>
+  <circle cx="110" cy="220" r="5" fill="#1f6fd0"/>
+  <circle cx="205" cy="220" r="5" fill="#1f6fd0"/>
+  <circle cx="300" cy="220" r="5" fill="#1f6fd0"/>
+  <text x="110" y="248" text-anchor="middle" font-size="10" fill="#565f6d">1회</text>
+  <text x="205" y="248" text-anchor="middle" font-size="10" fill="#565f6d">2회</text>
+  <text x="300" y="248" text-anchor="middle" font-size="10" fill="#565f6d">3회</text>
+  <line x1="110" y1="215" x2="180" y2="140" stroke="#1f6fd0" stroke-width="1.6" marker-end="url(#la)"/>
+  <line x1="205" y1="215" x2="205" y2="140" stroke="#1f6fd0" stroke-width="1.6" marker-end="url(#la)"/>
+  <line x1="300" y1="215" x2="230" y2="140" stroke="#1f6fd0" stroke-width="1.6" marker-end="url(#la)"/>
+  <text x="205" y="172" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="600">같은 데이터 반복 → 캐시에 두면 이득</text>
+
+  <!-- RIGHT: spatial -->
+  <text x="424" y="42" font-size="14" font-weight="700" fill="#1a2029">공간 지역성 (Spatial)</text>
+  <text x="424" y="62" font-size="11" fill="#565f6d">쓴 것 "근처"를 곧 이어서 쓴다</text>
+
+  <rect x="470" y="120" width="80" height="56" rx="8" fill="#d7efe2" stroke="#2b9560" stroke-width="1.6"/>
+  <text x="510" y="145" text-anchor="middle" font-size="12" font-weight="700" fill="#1a2029">#42</text>
+  <text x="510" y="163" text-anchor="middle" font-size="9" fill="#565f6d">지금 봄</text>
+  <rect x="558" y="120" width="80" height="56" rx="8" fill="#dce9fa" stroke="#1f6fd0" stroke-width="1.4"/>
+  <text x="598" y="145" text-anchor="middle" font-size="12" font-weight="700" fill="#1a2029">#43</text>
+  <text x="598" y="163" text-anchor="middle" font-size="9" fill="#565f6d">곧 볼 듯</text>
+  <rect x="646" y="120" width="80" height="56" rx="8" fill="#dce9fa" stroke="#1f6fd0" stroke-width="1.4"/>
+  <text x="686" y="145" text-anchor="middle" font-size="12" font-weight="700" fill="#1a2029">#44</text>
+  <text x="686" y="163" text-anchor="middle" font-size="9" fill="#565f6d">곧 볼 듯</text>
+
+  <line x1="550" y1="148" x2="556" y2="148" stroke="#1f6fd0" stroke-width="1.6" marker-end="url(#la)"/>
+  <line x1="638" y1="148" x2="644" y2="148" stroke="#1f6fd0" stroke-width="1.6" marker-end="url(#la)"/>
+  <text x="598" y="212" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="600">관련·인접 데이터 → 미리 함께 캐싱(프리페치)</text>
+  <text x="598" y="232" text-anchor="middle" font-size="9.5" fill="#565f6d">예: 같은 카테고리·같은 페이지 상품 목록</text>
+</svg>

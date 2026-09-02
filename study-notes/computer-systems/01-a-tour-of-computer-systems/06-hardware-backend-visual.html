@@ -1,0 +1,873 @@
+<title>하드웨어 위의 백엔드</title>
+<meta name="description" content="요청 하나가 버스와 메모리를 지나 CPU에 닿기까지 — 그리고 Spring Boot와 FastAPI가 그 순간 갈라지는 지점" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Noto+Serif+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+
+<style>
+  :root {
+    --bg: #eaedf2;
+    --surface: #ffffff;
+    --surface-2: #f5f7fa;
+    --ink: #1a2029;
+    --muted: #565f6d;
+    --faint: #878f9d;
+    --accent: #1f6fd0;
+    --accent-soft: #dce9fa;
+    --ok: #2b9560;
+    --ok-soft: #d7efe2;
+    --wait: #bd7a15;
+    --wait-soft: #f6e6c8;
+    --border: #d7dbe3;
+    --code-bg: #f3f6f9;
+    --shadow: 0 1px 2px rgba(20,30,50,.04), 0 8px 30px rgba(20,30,50,.06);
+
+    --font-display: "Fraunces", "Noto Serif KR", Georgia, serif;
+    --font-body: "Noto Serif KR", "Fraunces", Georgia, serif;
+    --font-mono: "IBM Plex Mono", "Noto Serif KR", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1119;
+      --surface: #141b25;
+      --surface-2: #1a222e;
+      --ink: #e6ebf2;
+      --muted: #9aa4b3;
+      --faint: #69727f;
+      --accent: #5c9cf0;
+      --accent-soft: #1b2c42;
+      --ok: #48c082;
+      --ok-soft: #16281f;
+      --wait: #e2a752;
+      --wait-soft: #2c2413;
+      --border: #26303f;
+      --code-bg: #101724;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1119;
+    --surface: #141b25;
+    --surface-2: #1a222e;
+    --ink: #e6ebf2;
+    --muted: #9aa4b3;
+    --faint: #69727f;
+    --accent: #5c9cf0;
+    --accent-soft: #1b2c42;
+    --ok: #48c082;
+    --ok-soft: #16281f;
+    --wait: #e2a752;
+    --wait-soft: #2c2413;
+    --border: #26303f;
+    --code-bg: #101724;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.75;
+    font-size: 18px;
+    letter-spacing: -.003em;
+  }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+  .bleed { max-width: 900px; }
+
+  /* ---- top bar ---- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    backdrop-filter: saturate(1.4) blur(8px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 900px; margin: 0 auto; padding: 11px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .brand b { color: var(--ink); font-weight: 500; }
+  .toggle {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 13px; cursor: pointer; transition: border-color .15s, color .15s;
+  }
+  .toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- hero ---- */
+  header.hero { padding: 74px 0 40px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 22px;
+  }
+  h1 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(2.4rem, 6vw, 3.7rem); line-height: 1.06;
+    letter-spacing: -.02em; margin: 0 0 22px; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 1.24rem; line-height: 1.66; color: var(--muted);
+    margin: 0; max-width: 40ch; font-weight: 300;
+  }
+  .hero-meta {
+    margin-top: 34px; padding-top: 20px; border-top: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 22px 34px;
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--faint);
+    letter-spacing: .02em;
+  }
+  .hero-meta b { color: var(--ink); font-weight: 500; }
+
+  /* ---- toc ---- */
+  nav.toc {
+    margin: 8px 0 20px; padding: 22px 26px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+  nav.toc p {
+    margin: 0 0 14px; font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--faint);
+  }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin: 0; }
+  nav.toc a {
+    display: flex; gap: 14px; align-items: baseline;
+    padding: 7px 0; text-decoration: none; color: var(--ink);
+    border-bottom: 1px dashed transparent;
+  }
+  nav.toc li + li a { border-top: 1px solid var(--border); }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+    min-width: 22px;
+  }
+
+  /* ---- sections ---- */
+  section { padding: 46px 0 4px; }
+  .sec-num {
+    font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h2 {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(1.7rem, 4vw, 2.15rem); line-height: 1.16;
+    letter-spacing: -.015em; margin: 0 0 20px; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--font-body); font-weight: 700;
+    font-size: 1.16rem; margin: 34px 0 12px; letter-spacing: -.01em;
+  }
+  p { margin: 0 0 18px; }
+  strong { font-weight: 700; }
+  .lead { font-size: 1.1rem; color: var(--muted); }
+  em.term { font-style: normal; font-weight: 500; color: var(--accent); }
+  code {
+    font-family: var(--font-mono); font-size: .84em;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: .08em .38em; white-space: nowrap;
+  }
+
+  /* callout */
+  .note {
+    margin: 26px 0; padding: 18px 22px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); box-shadow: var(--shadow);
+  }
+  .note .k {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 6px;
+  }
+  .note p:last-child { margin-bottom: 0; }
+
+  /* figure */
+  figure {
+    margin: 34px 0; padding: 26px 22px 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--shadow);
+  }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink); }
+  .fig-scroll { overflow-x: auto; }
+  figcaption {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+    font-size: .92rem; color: var(--muted); line-height: 1.6;
+  }
+  figcaption b { color: var(--ink); font-weight: 500; }
+
+  /* svg helpers */
+  .box { fill: var(--surface-2); stroke: var(--border); stroke-width: 1.5; }
+  .box-cpu { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .lbl { fill: var(--ink); font-family: var(--font-body); font-weight: 500; }
+  .lbl-sm { fill: var(--muted); font-family: var(--font-mono); }
+  .bus { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+  .bus-lbl { fill: var(--accent); font-family: var(--font-mono); font-weight: 500; }
+  .flow { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .dash { stroke-dasharray: 5 4; }
+  .seg-ok { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 1.3; }
+  .seg-wait { fill: var(--wait-soft); stroke: var(--wait); stroke-width: 1.3; }
+  .seg-ok-t { fill: var(--ok); font-family: var(--font-mono); font-weight: 500; }
+  .seg-wait-t { fill: var(--wait); font-family: var(--font-mono); font-weight: 500; }
+
+  /* legend chips */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 6px 0 2px; font-size: .9rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); }
+  .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+  .dot.ok { background: var(--ok-soft); border: 1.3px solid var(--ok); }
+  .dot.wait { background: var(--wait-soft); border: 1.3px solid var(--wait); }
+  .dot.acc { background: var(--accent-soft); border: 1.3px solid var(--accent); }
+
+  /* code block */
+  pre {
+    margin: 22px 0; padding: 18px 20px; overflow-x: auto;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; font-family: var(--font-mono); font-size: 13.5px;
+    line-height: 1.65; letter-spacing: 0;
+  }
+  pre code { background: none; border: none; padding: 0; white-space: pre; font-size: inherit; }
+  pre .c { color: var(--faint); }
+  pre .hl-ok { color: var(--ok); font-weight: 500; }
+  pre .hl-wait { color: var(--wait); font-weight: 500; }
+  pre .hl-acc { color: var(--accent); font-weight: 500; }
+
+  /* compare grid */
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 30px 0; }
+  .vs .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 20px 8px; box-shadow: var(--shadow);
+  }
+  .vs .card h4 {
+    margin: 0 0 4px; font-family: var(--font-display); font-size: 1.2rem; font-weight: 600;
+  }
+  .vs .card .tag {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em;
+    color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 12px;
+  }
+  .vs .card ul { margin: 0 0 12px; padding-left: 18px; }
+  .vs .card li { margin-bottom: 8px; font-size: .98rem; line-height: 1.55; }
+  @media (max-width: 620px) { .vs { grid-template-columns: 1fr; } }
+
+  /* table */
+  .table-scroll { overflow-x: auto; margin: 28px 0; }
+  table {
+    width: 100%; border-collapse: collapse; font-size: .96rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    background: var(--surface-2);
+  }
+  tr:last-child td { border-bottom: none; }
+  td b { font-weight: 700; }
+
+  .kicker { color: var(--accent); font-weight: 700; }
+
+  footer {
+    margin: 60px 0 40px; padding-top: 24px; border-top: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--faint);
+    line-height: 1.7;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">컴퓨터 시스템 · <b>1장 노트</b></span>
+    <button class="toggle" id="themeBtn" type="button" aria-label="라이트/다크 전환">◐ 테마</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">요청 하나의 하드웨어 여행</p>
+    <h1>하드웨어 위의 백엔드</h1>
+    <p class="standfirst">
+      HTTP 요청 하나가 랜카드에서 출발해 버스와 메모리를 지나 CPU에 닿기까지 —
+      그리고 그 여행의 마지막 한 순간에서 <em class="term">Spring Boot</em>와
+      <em class="term">FastAPI</em>가 완전히 갈라지는 이유.
+    </p>
+    <div class="hero-meta">
+      <span>주제 · <b>버스 · I/O 브릿지 · 메모리 · 동시성</b></span>
+      <span>연결 · <b>CSAPP 1.4 → 실무</b></span>
+      <span>예제 · <b>WeCam · speaknote · 도깨비</b></span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="목차">
+    <p>목차</p>
+    <ol>
+      <li><a href="#s1">웹서버도 결국 프로세스 하나다</a></li>
+      <li><a href="#s2">하드웨어 지도 — 버스와 I/O 브릿지</a></li>
+      <li><a href="#s3">요청이 CPU에 닿기까지 (공통 경로)</a></li>
+      <li><a href="#s4">Spring Boot — 요청마다 일꾼 한 명</a></li>
+      <li><a href="#s5">FastAPI — 일꾼 하나가 여러 냄비를</a></li>
+      <li><a href="#s6">단 하나의 차이, 나란히 보기</a></li>
+      <li><a href="#s7">그래서 언제 무엇을 쓰나</a></li>
+    </ol>
+  </nav>
+</div>
+
+<main class="wrap">
+
+  <!-- 1 -->
+  <section id="s1">
+    <p class="sec-num">01</p>
+    <h2>웹서버도 결국 프로세스 하나다</h2>
+    <p class="lead">
+      <code>java -jar app.jar</code> 든 <code>uvicorn app.main:app</code> 이든,
+      서버를 켠다는 건 특별한 일이 아니다. 앞 절에서 본 그것 —
+      <strong>디스크의 코드를 메모리로 올려, CPU가 인스트럭션을 하나씩 읽어 실행하는 프로세스를 하나 만드는 일</strong>이다.
+    </p>
+    <p>
+      웹서버가 보통 프로그램과 다른 점은 딱 하나다. 계산을 끝내고 종료하는 대신,
+      <strong>소켓을 열어두고 요청이 오기를 무한히 기다린다.</strong>
+      즉 웹서버 = “죽지 않고 네트워크를 계속 읽는 프로세스”다.
+      이 글은 그 프로세스에 요청이 하나 도착했을 때,
+      전기 신호가 어떤 부품들을 거쳐 흐르는지를 따라가 본다.
+    </p>
+    <div class="note">
+      <span class="k">이 글의 목적지</span>
+      <p>
+        Spring Boot(스레드 풀)와 FastAPI(이벤트 루프)는 흔히 “철학이 다르다”고 뭉뚱그려진다.
+        하지만 하드웨어까지 내려가 보면, 둘의 본질적 차이는 아주 좁은 한 순간 —
+        <strong>“I/O를 기다리는 동안 CPU와 스레드가 무엇을 하는가”</strong> — 에만 있다.
+        나머지는 전부 똑같다. 그 한 순간을 눈으로 보는 게 목표다.
+      </p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <p class="sec-num">02</p>
+    <h2>하드웨어 지도 — 버스와 I/O 브릿지</h2>
+    <p>
+      부품들은 아무렇게나 이어져 있지 않다. 속도가 비슷한 것끼리 묶어
+      <strong>여러 층의 버스(bus)</strong>로 연결하고, 그 사이에
+      <em class="term">I/O 브릿지</em>라는 교차로를 둔다.
+      브릿지는 빠른 쪽(CPU·메모리)과 느린 쪽(키보드·디스크·랜카드)을 중계하는 나들목이다.
+    </p>
+
+    <figure>
+      <div class="fig-scroll">
+      <svg viewBox="0 0 780 476" role="img" aria-label="CPU와 메인 메모리는 빠른 시스템·메모리 버스로, 키보드·디스플레이·디스크·랜카드는 느린 I/O 버스로 I/O 브릿지에 연결된다">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+
+        <!-- CPU -->
+        <rect class="box-cpu" x="270" y="16" width="240" height="96" rx="10"/>
+        <text class="lbl" x="390" y="38" text-anchor="middle" font-size="15" font-weight="700">CPU (프로세서)</text>
+        <rect class="box" x="288" y="52" width="94" height="44" rx="6"/>
+        <text class="lbl-sm" x="335" y="72" text-anchor="middle" font-size="11">레지스터</text>
+        <text class="lbl-sm" x="335" y="86" text-anchor="middle" font-size="11">파일</text>
+        <rect class="box" x="398" y="52" width="94" height="44" rx="6"/>
+        <text class="lbl-sm" x="445" y="79" text-anchor="middle" font-size="11">ALU</text>
+
+        <!-- system bus -->
+        <line class="bus" x1="390" y1="112" x2="390" y2="176" marker-end="url(#ah)"/>
+        <line class="bus" x1="390" y1="176" x2="390" y2="112" marker-end="url(#ah)"/>
+        <text class="bus-lbl" x="402" y="150" font-size="11.5">① 시스템 버스</text>
+
+        <!-- IO bridge -->
+        <rect class="box" x="300" y="178" width="180" height="60" rx="10"/>
+        <text class="lbl" x="390" y="205" text-anchor="middle" font-size="14" font-weight="700">I/O 브릿지</text>
+        <text class="lbl-sm" x="390" y="224" text-anchor="middle" font-size="10.5">빠른↔느린 세계의 교차로</text>
+
+        <!-- memory bus + memory -->
+        <line class="bus" x1="480" y1="208" x2="576" y2="208" marker-end="url(#ah)"/>
+        <line class="bus" x1="576" y1="208" x2="480" y2="208" marker-end="url(#ah)"/>
+        <text class="bus-lbl" x="528" y="197" text-anchor="middle" font-size="11.5">② 메모리 버스</text>
+        <rect class="box-cpu" x="578" y="176" width="176" height="64" rx="10"/>
+        <text class="lbl" x="666" y="203" text-anchor="middle" font-size="14" font-weight="700">메인 메모리</text>
+        <text class="lbl-sm" x="666" y="222" text-anchor="middle" font-size="10.5">DRAM · 실행 중 데이터</text>
+
+        <!-- IO bus -->
+        <line class="bus" x1="390" y1="238" x2="390" y2="286" marker-end="url(#ah)"/>
+        <line class="bus" x1="60" y1="300" x2="720" y2="300"/>
+        <line class="bus" x1="390" y1="286" x2="390" y2="300"/>
+        <text class="bus-lbl" x="72" y="290" font-size="11.5">③ I/O 버스 — 상대적으로 느림</text>
+
+        <!-- controllers -->
+        <g>
+          <line class="bus" x1="120" y1="300" x2="120" y2="334"/>
+          <rect class="box" x="60" y="336" width="120" height="40" rx="7"/>
+          <text class="lbl-sm" x="120" y="360" text-anchor="middle" font-size="11">USB 컨트롤러</text>
+          <rect class="box" x="72" y="416" width="44" height="34" rx="6"/>
+          <text class="lbl-sm" x="94" y="437" text-anchor="middle" font-size="10">키보드</text>
+          <rect class="box" x="124" y="416" width="44" height="34" rx="6"/>
+          <text class="lbl-sm" x="146" y="437" text-anchor="middle" font-size="10">마우스</text>
+          <line class="flow" x1="94" y1="376" x2="94" y2="414"/>
+          <line class="flow" x1="146" y1="376" x2="146" y2="414"/>
+        </g>
+        <g>
+          <line class="bus" x1="300" y1="300" x2="300" y2="334"/>
+          <rect class="box" x="240" y="336" width="120" height="40" rx="7"/>
+          <text class="lbl-sm" x="300" y="360" text-anchor="middle" font-size="11">그래픽 어댑터</text>
+          <rect class="box" x="266" y="416" width="68" height="34" rx="6"/>
+          <text class="lbl-sm" x="300" y="437" text-anchor="middle" font-size="10">디스플레이</text>
+          <line class="flow" x1="300" y1="376" x2="300" y2="414"/>
+        </g>
+        <g>
+          <line class="bus" x1="480" y1="300" x2="480" y2="334"/>
+          <rect class="box" x="420" y="336" width="120" height="40" rx="7"/>
+          <text class="lbl-sm" x="480" y="360" text-anchor="middle" font-size="11">디스크 컨트롤러</text>
+          <rect class="box" x="452" y="416" width="56" height="34" rx="6"/>
+          <text class="lbl-sm" x="480" y="437" text-anchor="middle" font-size="10">디스크</text>
+          <line class="flow" x1="480" y1="376" x2="480" y2="414"/>
+        </g>
+        <g>
+          <line class="bus" x1="660" y1="300" x2="660" y2="334"/>
+          <rect class="box" x="600" y="336" width="120" height="40" rx="7"/>
+          <text class="lbl-sm" x="660" y="360" text-anchor="middle" font-size="11">NIC (랜카드)</text>
+          <rect class="box" x="632" y="416" width="56" height="34" rx="6"/>
+          <text class="lbl-sm" x="660" y="437" text-anchor="middle" font-size="10">네트워크</text>
+          <line class="flow" x1="660" y1="376" x2="660" y2="414"/>
+        </g>
+      </svg>
+      </div>
+      <figcaption>
+        <b>세 층의 버스.</b> CPU와 메모리는 짧고 빠른 <b>① 시스템 버스 · ② 메모리 버스</b>로 직접 오간다.
+        키보드·디스플레이·디스크·랜카드 같은 느린 장치는 <b>③ I/O 버스</b>에 매달리고,
+        <b>I/O 브릿지</b>가 두 세계를 중계한다. 백엔드에서 중요한 점 하나 — <b>NIC(랜카드)도 결국 I/O 버스에 붙은 장치</b>일 뿐, 키보드·디스크와 같은 계층이다.
+      </figcaption>
+    </figure>
+
+    <p>
+      왜 굳이 층을 나눴을까? <strong>부품마다 속도가 천차만별</strong>이기 때문이다.
+      빠른 것과 느린 것을 한 줄에 묶으면 전체가 느린 쪽에 발목 잡힌다.
+    </p>
+    <div class="legend" aria-hidden="true" style="font-family:var(--font-mono);font-size:.85rem;color:var(--muted);margin:18px 0 6px">
+      레지스터 &nbsp;›&nbsp; 메모리(DRAM) &nbsp;»&nbsp; 디스크(SSD) &nbsp;»»&nbsp; 네트워크
+    </div>
+    <p class="lead" style="margin-top:2px">
+      왼쪽으로 갈수록 빠르고, 오른쪽으로 갈수록 느리다. 이 <strong>속도 계층</strong>이
+      뒤에 배울 캐시(메모리 계층구조)의 출발점이기도 하다.
+    </p>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3">
+    <p class="sec-num">03</p>
+    <h2>요청이 CPU에 닿기까지 (공통 경로)</h2>
+    <p>
+      이제 내 서버에 HTTP 요청이 하나 도착한다. Spring이든 FastAPI든
+      <strong>여기까지의 길은 완전히 똑같다.</strong> 요청 데이터가 메모리에 자리 잡고
+      CPU가 그것을 인지하기까지의 여정을 따라가 보자.
+    </p>
+
+    <figure>
+      <div class="fig-scroll">
+      <svg viewBox="0 0 860 300" role="img" aria-label="요청 패킷이 NIC에서 I/O 브릿지를 거쳐 메모리에 DMA로 실리고, 완료되면 인터럽트로 CPU에 알린다">
+        <defs>
+          <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+
+        <!-- row of boxes -->
+        <g>
+          <rect class="box" x="14" y="120" width="118" height="60" rx="9"/>
+          <text class="lbl" x="73" y="146" text-anchor="middle" font-size="12.5" font-weight="700">클라이언트</text>
+          <text class="lbl-sm" x="73" y="164" text-anchor="middle" font-size="10">요청 전송</text>
+        </g>
+        <g>
+          <rect class="box" x="182" y="120" width="118" height="60" rx="9"/>
+          <text class="lbl" x="241" y="146" text-anchor="middle" font-size="12.5" font-weight="700">NIC</text>
+          <text class="lbl-sm" x="241" y="164" text-anchor="middle" font-size="10">랜카드</text>
+        </g>
+        <g>
+          <rect class="box" x="350" y="120" width="118" height="60" rx="9"/>
+          <text class="lbl" x="409" y="146" text-anchor="middle" font-size="12.5" font-weight="700">I/O 브릿지</text>
+          <text class="lbl-sm" x="409" y="164" text-anchor="middle" font-size="10">교차로</text>
+        </g>
+        <g>
+          <rect class="box-cpu" x="518" y="120" width="132" height="60" rx="9"/>
+          <text class="lbl" x="584" y="143" text-anchor="middle" font-size="12.5" font-weight="700">메인 메모리</text>
+          <text class="lbl-sm" x="584" y="161" text-anchor="middle" font-size="10">소켓 수신 버퍼</text>
+        </g>
+        <g>
+          <rect class="box-cpu" x="700" y="120" width="118" height="60" rx="9"/>
+          <text class="lbl" x="759" y="146" text-anchor="middle" font-size="12.5" font-weight="700">CPU</text>
+          <text class="lbl-sm" x="759" y="164" text-anchor="middle" font-size="10">읽어서 처리</text>
+        </g>
+
+        <!-- arrows -->
+        <line class="flow" x1="132" y1="150" x2="180" y2="150" marker-end="url(#ah2)"/>
+        <line class="flow" x1="300" y1="150" x2="348" y2="150" marker-end="url(#ah2)"/>
+        <text class="lbl-sm" x="324" y="140" text-anchor="middle" font-size="9.5">I/O 버스</text>
+        <line class="flow" x1="468" y1="150" x2="516" y2="150" marker-end="url(#ah2)"/>
+        <text class="lbl-sm" x="492" y="140" text-anchor="middle" font-size="9.5">메모리 버스</text>
+        <line class="flow" x1="650" y1="150" x2="698" y2="150" marker-end="url(#ah2)"/>
+        <text class="lbl-sm" x="674" y="140" text-anchor="middle" font-size="9.5">시스템 버스</text>
+
+        <!-- DMA bracket over NIC..memory -->
+        <path class="flow" d="M241,104 L241,84 L584,84 L584,104" fill="none"/>
+        <rect x="330" y="56" width="166" height="26" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+        <text class="bus-lbl" x="413" y="73" text-anchor="middle" font-size="12">DMA · CPU 안 거침</text>
+
+        <!-- interrupt arrow NIC/disk -> CPU -->
+        <path class="flow dash" d="M241,180 L241,246 L759,246 L759,182" marker-end="url(#ah2)"/>
+        <rect x="640" y="232" width="150" height="26" rx="13" fill="var(--surface-2)" stroke="var(--wait)" stroke-width="1.3"/>
+        <text class="seg-wait-t" x="715" y="249" text-anchor="middle" font-size="11.5">인터럽트 · "다 왔어요"</text>
+      </svg>
+      </div>
+      <figcaption>
+        <b>두 개의 하드웨어 트릭이 핵심이다.</b>
+        <b>DMA</b>(Direct Memory Access)는 데이터를 <b>CPU를 거치지 않고</b> 장치→메모리로 직접 실어 나른다 —
+        느린 운반은 전담 일꾼에게 맡기고 CPU는 딴 일을 한다. 운반이 끝나면 컨트롤러가
+        <b>인터럽트</b>로 CPU를 톡 쳐서 “도착했다”고 알린다. 이 <b>DMA + 인터럽트</b> 짝은 뒤에서 두 프레임워크가 갈라질 때 그대로 다시 등장한다.
+      </figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="k">백엔드로 번역하면</span>
+      <p>
+        “DB가 느리다”는 말의 하드웨어적 실체는 <strong>느린 I/O 버스 너머 디스크까지 왕복해야 한다</strong>는 뜻이다.
+        Redis 캐시가 빠른 이유는 그 왕복을 생략하고 <strong>빠른 메모리 버스 안에서 끝내기</strong> 때문이고 —
+        이게 “느린 디스크 대신 빠른 메모리를 쓴다”는 1장 원리의 실무판이다.
+      </p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4">
+    <p class="sec-num">04</p>
+    <h2>Spring Boot — 요청마다 일꾼 한 명</h2>
+    <p>
+      요청이 메모리에 도착했다. Spring Boot(MVC)는 톰캣 <strong>스레드 풀</strong>에서
+      일꾼(스레드) 하나를 꺼내 이 요청에 통째로 배정한다. 그 스레드가 처음부터 끝까지 책임진다.
+    </p>
+
+    <pre><code><span class="hl-acc">@GetMapping</span>("/users/{id}")
+public User getUser(<span class="hl-acc">@PathVariable</span> Long id) {
+    return userRepository.findById(id)   <span class="c">// DB까지 왕복 — 느리다</span>
+                         .orElseThrow();
+}</code></pre>
+
+    <p>
+      문제는 <code>findById()</code>가 DB 응답을 기다리는 동안 벌어진다.
+      <strong>그 스레드는 “블로킹” 상태로 멈춰 선다.</strong> CPU는 잠시 다른 스레드로 갈아타지만,
+      이 스레드 자체는 요청 전용으로 계속 붙잡혀 있다 — <strong>스택 메모리까지 점유한 채</strong>.
+    </p>
+
+    <figure>
+      <div class="fig-scroll">
+      <svg viewBox="0 0 780 250" role="img" aria-label="요청 세 개가 각각 스레드 하나씩을 차지하고, DB를 기다리는 구간 동안 그 스레드가 통째로 대기 상태로 멈춘다">
+        <!-- time axis -->
+        <line x1="120" y1="30" x2="120" y2="220" stroke="var(--border)" stroke-width="1"/>
+        <line x1="120" y1="220" x2="760" y2="220" stroke="var(--border)" stroke-width="1"/>
+        <text class="lbl-sm" x="760" y="238" text-anchor="end" font-size="10.5">시간 →</text>
+
+        <!-- lane A -->
+        <text class="lbl-sm" x="108" y="60" text-anchor="end" font-size="11">스레드 A</text>
+        <rect class="seg-ok" x="120" y="44" width="120" height="30" rx="5"/>
+        <text class="seg-ok-t" x="180" y="63" text-anchor="middle" font-size="10.5">요청 처리</text>
+        <rect class="seg-wait" x="240" y="44" width="230" height="30" rx="5"/>
+        <text class="seg-wait-t" x="355" y="63" text-anchor="middle" font-size="10.5">DB 대기 · 스레드 붙잡힘 (블로킹)</text>
+        <rect class="seg-ok" x="470" y="44" width="90" height="30" rx="5"/>
+        <text class="seg-ok-t" x="515" y="63" text-anchor="middle" font-size="10.5">재개</text>
+
+        <!-- lane B -->
+        <text class="lbl-sm" x="108" y="118" text-anchor="end" font-size="11">스레드 B</text>
+        <rect class="seg-ok" x="120" y="102" width="90" height="30" rx="5"/>
+        <text class="seg-ok-t" x="165" y="121" text-anchor="middle" font-size="10.5">처리</text>
+        <rect class="seg-wait" x="210" y="102" width="250" height="30" rx="5"/>
+        <text class="seg-wait-t" x="335" y="121" text-anchor="middle" font-size="10.5">DB 대기 · 붙잡힘</text>
+        <rect class="seg-ok" x="460" y="102" width="90" height="30" rx="5"/>
+        <text class="seg-ok-t" x="505" y="121" text-anchor="middle" font-size="10.5">재개</text>
+
+        <!-- lane C -->
+        <text class="lbl-sm" x="108" y="176" text-anchor="end" font-size="11">스레드 C</text>
+        <rect class="seg-ok" x="120" y="160" width="140" height="30" rx="5"/>
+        <text class="seg-ok-t" x="190" y="179" text-anchor="middle" font-size="10.5">요청 처리</text>
+        <rect class="seg-wait" x="260" y="160" width="220" height="30" rx="5"/>
+        <text class="seg-wait-t" x="370" y="179" text-anchor="middle" font-size="10.5">DB 대기 · 붙잡힘</text>
+        <rect class="seg-ok" x="480" y="160" width="80" height="30" rx="5"/>
+        <text class="seg-ok-t" x="520" y="179" text-anchor="middle" font-size="10.5">재개</text>
+      </svg>
+      </div>
+      <figcaption>
+        <b>요청 3개 = 스레드 3개.</b> 노란 구간(DB 대기) 동안 그 스레드는 아무 일도 못 하면서
+        자리를 계속 차지한다. 동시 요청 1000개면 스레드 1000개 —
+        <b>스택 메모리 1000개분과 문맥 교환 비용</b>이 그대로 든다. 스레드 풀(기본 200)이 차면 나머지는 큐에서 대기한다.
+      </figcaption>
+    </figure>
+
+    <div class="legend">
+      <span><i class="dot ok"></i> CPU에서 실제로 일하는 중</span>
+      <span><i class="dot wait"></i> I/O 대기 — 스레드가 붙잡힌 채 멈춤</span>
+    </div>
+
+    <p style="margin-top:18px">
+      대신 장점이 분명하다. 코드가 위에서 아래로 그냥 읽힌다(동기). 트랜잭션·예외 처리가 직관적이고,
+      JPA 같은 성숙한 생태계가 이 모델 위에 잘 얹혀 있다. <strong>WeCam의 Spring MVC 백엔드가 정확히 이 방식</strong>이다.
+    </p>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <p class="sec-num">05</p>
+    <h2>FastAPI — 일꾼 하나가 여러 냄비를</h2>
+    <p>
+      FastAPI는 접근이 다르다. <strong>스레드 하나</strong>가 <em class="term">이벤트 루프</em>를 돌리며
+      수많은 요청을 번갈아 처리한다. 마치 요리사 한 명이 여러 냄비를 동시에 돌보듯이.
+    </p>
+
+    <pre><code><span class="hl-acc">@router.post</span>("/recommend")
+async def recommend(req: Req):
+    async with llm_semaphore:              <span class="c">// 동시 N개까지만 통과</span>
+        result = <span class="hl-wait">await</span> call_llm(req.prompt)   <span class="c">// 기다리는 동안 자리 비켜줌</span>
+    return result</code></pre>
+
+    <p>
+      핵심은 <code>await</code>다. LLM 응답을 기다려야 하는 순간, <strong>스레드는 멈추지 않는다.</strong>
+      “요청 A는 대기 중”이라고 메모(코루틴 상태)만 남기고, <strong>같은 스레드가 곧바로 요청 B, C로 옮겨간다.</strong>
+      응답이 도착하면(인터럽트) 루프가 “아 A 왔네” 하고 이어서 마무리한다.
+    </p>
+
+    <figure>
+      <div class="fig-scroll">
+      <svg viewBox="0 0 780 250" role="img" aria-label="스레드 하나가 요청들 사이를 옮겨 다니며 쉬지 않고 일하고, 각 요청의 대기는 스레드와 무관하게 백그라운드에서 진행된다">
+        <!-- time axis -->
+        <line x1="120" y1="30" x2="120" y2="220" stroke="var(--border)" stroke-width="1"/>
+        <line x1="120" y1="220" x2="760" y2="220" stroke="var(--border)" stroke-width="1"/>
+        <text class="lbl-sm" x="760" y="238" text-anchor="end" font-size="10.5">시간 →</text>
+
+        <!-- single thread lane: continuous green, hopping tasks -->
+        <text class="lbl-sm" x="108" y="60" text-anchor="end" font-size="11">스레드 1</text>
+        <rect class="seg-ok" x="120" y="44" width="95" height="30" rx="5"/>
+        <text class="seg-ok-t" x="167" y="63" text-anchor="middle" font-size="10.5">A 처리</text>
+        <rect class="seg-ok" x="217" y="44" width="95" height="30" rx="5"/>
+        <text class="seg-ok-t" x="264" y="63" text-anchor="middle" font-size="10.5">B 처리</text>
+        <rect class="seg-ok" x="314" y="44" width="95" height="30" rx="5"/>
+        <text class="seg-ok-t" x="361" y="63" text-anchor="middle" font-size="10.5">C 처리</text>
+        <rect class="seg-ok" x="411" y="44" width="105" height="30" rx="5"/>
+        <text class="seg-ok-t" x="463" y="63" text-anchor="middle" font-size="10.5">A 재개</text>
+        <rect class="seg-ok" x="518" y="44" width="100" height="30" rx="5"/>
+        <text class="seg-ok-t" x="568" y="63" text-anchor="middle" font-size="10.5">B 재개</text>
+        <text class="lbl-sm" x="636" y="63" font-size="10">쉼 없이 →</text>
+
+        <!-- background waits (not on the thread) -->
+        <text class="lbl-sm" x="108" y="118" text-anchor="end" font-size="11">A의 대기</text>
+        <rect class="seg-wait" x="215" y="102" width="196" height="26" rx="5" opacity=".85"/>
+        <text class="seg-wait-t" x="313" y="120" text-anchor="middle" font-size="10">LLM 응답 대기 (스레드 밖)</text>
+
+        <text class="lbl-sm" x="108" y="160" text-anchor="end" font-size="11">B의 대기</text>
+        <rect class="seg-wait" x="312" y="146" width="206" height="26" rx="5" opacity=".85"/>
+        <text class="seg-wait-t" x="415" y="164" text-anchor="middle" font-size="10">LLM 응답 대기 (스레드 밖)</text>
+
+        <text class="lbl-sm" x="108" y="200" text-anchor="end" font-size="11">C의 대기</text>
+        <rect class="seg-wait" x="409" y="186" width="150" height="26" rx="5" opacity=".85"/>
+        <text class="seg-wait-t" x="484" y="204" text-anchor="middle" font-size="10">응답 대기</text>
+      </svg>
+      </div>
+      <figcaption>
+        <b>스레드 레인은 초록으로 꽉 찬다.</b> 각 요청의 노란 “대기”는 스레드가 아니라
+        <b>백그라운드(하드웨어 I/O)에서 진행</b>되고, 그 시간에 스레드는 다른 요청을 처리한다.
+        그래서 동시 요청이 1000개라도 <b>스레드는 하나(+워커 몇 개)</b>면 충분하다 —
+        스택 메모리도, 문맥 교환도 거의 없다.
+      </figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="k">도깨비-ai의 llm_semaphore</span>
+      <p>
+        이벤트 루프는 요청을 무한정 받아들일 수 있다. 하지만 LLM 동시 호출이 너무 많으면
+        외부 API 한도나 메모리가 터진다. <strong>세마포어는 “동시에 N개까지만 통과”시키는 게이트</strong>로,
+        이 무한 동시성을 의도적으로 제한한다 — OS의 동기화 개념을 백엔드에서 그대로 쓰는 실제 예다.
+      </p>
+    </div>
+
+    <p>
+      단점도 있다. <code>await</code> 없이 <strong>무거운 CPU 계산</strong>을 루프 안에서 하면,
+      그동안 다른 요청이 전부 멈춘다(요리사가 한 냄비만 붙들고 있는 꼴).
+      그래서 <strong>WeCam의 OCR</strong> 같은 CPU 바운드 작업은 이벤트 루프가 아니라 프로세스/워커로 빼야 한다.
+    </p>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <p class="sec-num">06</p>
+    <h2>단 하나의 차이, 나란히 보기</h2>
+    <p>
+      두 모델은 <strong>똑같은 버스, 똑같은 DMA, 똑같은 인터럽트</strong>를 쓴다.
+      갈라지는 건 오직 <strong>“I/O를 기다리는 그 순간”</strong> 하나뿐이다.
+    </p>
+
+    <figure>
+      <div class="fig-scroll">
+      <svg viewBox="0 0 780 250" role="img" aria-label="I/O 대기 순간, Spring은 스레드를 붙잡아 두고 FastAPI는 같은 스레드를 다음 요청으로 돌린다">
+        <defs>
+          <marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+
+        <!-- divider -->
+        <line x1="390" y1="20" x2="390" y2="230" stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+
+        <!-- LEFT: Spring -->
+        <text class="lbl" x="40" y="34" font-size="13" font-weight="700">Spring MVC</text>
+        <text class="lbl-sm" x="40" y="52" font-size="10.5">기다림 = 스레드를 붙잡아 둠</text>
+        <rect class="seg-ok" x="40" y="70" width="120" height="34" rx="6"/>
+        <text class="seg-ok-t" x="100" y="92" text-anchor="middle" font-size="11">스레드 A 처리</text>
+        <line class="flow" x1="160" y1="87" x2="196" y2="87" marker-end="url(#ah3)"/>
+        <rect class="seg-wait" x="198" y="70" width="150" height="34" rx="6"/>
+        <text class="seg-wait-t" x="273" y="88" text-anchor="middle" font-size="10.5">A가 대기하는 동안</text>
+        <text class="seg-wait-t" x="273" y="101" text-anchor="middle" font-size="10.5">A는 잠김 </text>
+        <text class="lbl-sm" x="40" y="150" font-size="11" fill="var(--wait)">→ 새 요청은 새 스레드가 필요</text>
+        <text class="lbl-sm" x="40" y="172" font-size="11">동시 처리량 = 스레드 개수에 묶임</text>
+
+        <!-- RIGHT: FastAPI -->
+        <text class="lbl" x="410" y="34" font-size="13" font-weight="700">FastAPI async</text>
+        <text class="lbl-sm" x="410" y="52" font-size="10.5">기다림 = 스레드를 딴 일로 돌림</text>
+        <rect class="seg-ok" x="410" y="70" width="110" height="34" rx="6"/>
+        <text class="seg-ok-t" x="465" y="92" text-anchor="middle" font-size="11">A 처리</text>
+        <line class="flow" x1="520" y1="87" x2="556" y2="87" marker-end="url(#ah3)"/>
+        <rect class="seg-ok" x="558" y="70" width="110" height="34" rx="6"/>
+        <text class="seg-ok-t" x="613" y="92" text-anchor="middle" font-size="11">곧바로 B 처리</text>
+        <!-- A wait in background -->
+        <rect class="seg-wait" x="558" y="120" width="150" height="28" rx="6" opacity=".85"/>
+        <text class="seg-wait-t" x="633" y="139" text-anchor="middle" font-size="10">A는 백그라운드에서 대기</text>
+        <path class="flow dash" d="M465,104 L465,134 L556,134" marker-end="url(#ah3)"/>
+        <text class="lbl-sm" x="410" y="172" font-size="11" fill="var(--ok)">→ 같은 스레드가 계속 일함</text>
+        <text class="lbl-sm" x="410" y="194" font-size="11">동시 처리량 = 대기가 많을수록 ↑</text>
+      </svg>
+      </div>
+      <figcaption>
+        <b>이것이 전부다.</b> I/O 대기 순간 — Spring MVC는 그 스레드를 <b>붙잡아 두고</b>(그래서 요청 수만큼 스레드가 필요),
+        FastAPI는 같은 스레드를 <b>다음 요청으로 돌린다</b>(그래서 하나로 버틴다). 나머지 하드웨어 동작은 완전히 동일하다.
+      </figcaption>
+    </figure>
+
+    <div class="vs">
+      <div class="card">
+        <span class="tag">Thread-per-request</span>
+        <h4>스레드 풀</h4>
+        <ul>
+          <li>요청마다 스레드 하나 배정, 대기 중엔 블로킹</li>
+          <li>코드가 동기라 읽기·디버깅·트랜잭션이 직관적</li>
+          <li>스레드가 늘수록 메모리·문맥교환 비용 증가</li>
+          <li><b>Spring MVC</b> (WeCam) · Flask(+gunicorn 워커)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="tag">Event loop</span>
+        <h4>이벤트 루프</h4>
+        <ul>
+          <li>스레드 하나가 대기 시간마다 다른 요청으로 이동</li>
+          <li>적은 스레드로 많은 동시 요청 — 메모리 효율적</li>
+          <li>무거운 CPU 계산이 루프를 막는 위험</li>
+          <li><b>FastAPI</b>(도깨비) · NestJS · Spring <b>WebFlux</b>(speaknote)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="k">중요 — 모델은 언어가 아니라 선택이 정한다</span>
+      <p>
+        같은 Java/Spring이라도 <strong>MVC(스레드 풀)</strong>와 <strong>WebFlux(이벤트 루프, Netty 기반)</strong>를 고를 수 있다.
+        speaknote가 <code>starter-web</code>과 <code>starter-webflux</code>를 함께 넣은 이유가 이것 —
+        실시간·스트리밍엔 이벤트 루프형이 유리하기 때문이다. “Spring = 무조건 스레드 풀”이 아니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7">
+    <p class="sec-num">07</p>
+    <h2>그래서 언제 무엇을 쓰나</h2>
+    <p class="lead">
+      모든 판단은 한 질문으로 수렴한다 —
+      <strong>이 일은 “기다리는 일(I/O)”인가, “계산하는 일(CPU)”인가?</strong>
+    </p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>작업 성격</th><th>예 (내 프로젝트)</th><th>맞는 모델</th><th>이유</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>I/O 바운드</b><br/>기다림이 많음</td>
+            <td>LLM 호출(도깨비-ai), DB·Redis 조회, 소켓 통신</td>
+            <td><span class="kicker">이벤트 루프</span><br/>FastAPI · WebFlux · Nest</td>
+            <td>기다리는 시간에 딴 요청을 처리 → 스레드를 낭비하지 않음</td>
+          </tr>
+          <tr>
+            <td><b>CPU 바운드</b><br/>계산이 많음</td>
+            <td>OCR(WeCam-ai), 이미지·영상 처리, 대규모 연산</td>
+            <td><span class="kicker">멀티 프로세스</span><br/>워커 여러 개</td>
+            <td>코어를 꽉 채워 병렬 계산 · 이벤트 루프가 막히는 것을 방지</td>
+          </tr>
+          <tr>
+            <td><b>복잡한 트랜잭션</b><br/>성숙한 생태계</td>
+            <td>결제·정산·권한(WeCam · speaknote)</td>
+            <td><span class="kicker">스레드 풀</span><br/>Spring MVC</td>
+            <td>동기 코드라 흐름이 직관적 · JPA·트랜잭션이 성숙</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:24px">
+      하드웨어로 되돌리면 이렇게 정리된다. <strong>I/O 바운드</strong>는 CPU가 놀면서
+      네트워크·디스크를 기다리는 상태 — 스레드를 붙잡아 두면 낭비이니 이벤트 루프에 양보한다.
+      <strong>CPU 바운드</strong>는 CPU 자체가 병목이니 — 코어 수만큼 프로세스를 돌려 물리적으로 병렬화하는 수밖에 없다.
+    </p>
+    <p>
+      결국 “스레드를 늘릴까 · 프로세스를 늘릴까 · 비동기로 바꿀까”라는 아키텍처 결정은,
+      <strong>이 작업이 CPU를 쓰는지 기다리는지</strong>에서 갈린다.
+      1장의 CPU·메모리·디스크·버스 개념이, 그대로 서버 설계의 근거가 되는 셈이다.
+    </p>
+
+    <div class="note">
+      <span class="k">한 문장으로</span>
+      <p>
+        요청은 늘 같은 하드웨어 길(NIC → 버스 → I/O 브릿지 → 메모리 → CPU)을 지난다.
+        <strong>프레임워크가 정하는 건 오직 하나 — I/O를 기다리는 그 순간, 일꾼을 붙잡아 둘 것인가 딴 일에 돌릴 것인가.</strong>
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    컴퓨터 시스템 1장 학습 노트 · 하드웨어 조직 → 백엔드 동시성<br/>
+    참고 스택 — WeCam(Spring MVC · OCR) · speaknote(Spring MVC+WebFlux · Flask) · 도깨비(NestJS · FastAPI)
+  </footer>
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById("themeBtn");
+    var root = document.documentElement;
+    function current() {
+      var t = root.getAttribute("data-theme");
+      if (t) return t;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    btn.addEventListener("click", function () {
+      var next = current() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("hwbe-theme", next); } catch (e) {}
+    });
+    try {
+      var saved = localStorage.getItem("hwbe-theme");
+      if (saved) root.setAttribute("data-theme", saved);
+    } catch (e) {}
+  })();
+</script>
