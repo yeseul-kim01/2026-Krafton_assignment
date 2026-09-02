@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 262" width="780" height="262" font-family="'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif" role="img" aria-label="스레드 하나가 요청들 사이를 옮겨 다니며 쉬지 않고 일하고, 각 요청의 대기는 스레드와 무관하게 백그라운드에서 진행된다">
+  <rect x="0" y="0" width="780" height="262" rx="16" fill="#ffffff" stroke="#d7dbe3"/>
+
+  <!-- axis -->
+  <line x1="120" y1="30" x2="120" y2="222" stroke="#d7dbe3" stroke-width="1"/>
+  <line x1="120" y1="222" x2="756" y2="222" stroke="#d7dbe3" stroke-width="1"/>
+  <text x="752" y="240" text-anchor="end" font-size="10.5" fill="#565f6d">시간 →</text>
+
+  <!-- single thread lane -->
+  <text x="108" y="60" text-anchor="end" font-size="11" fill="#565f6d">스레드 1</text>
+  <rect x="120" y="44" width="95" height="30" rx="5" fill="#d7efe2" stroke="#2b9560" stroke-width="1.3"/>
+  <text x="167" y="63" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="500">A 처리</text>
+  <rect x="217" y="44" width="95" height="30" rx="5" fill="#d7efe2" stroke="#2b9560" stroke-width="1.3"/>
+  <text x="264" y="63" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="500">B 처리</text>
+  <rect x="314" y="44" width="95" height="30" rx="5" fill="#d7efe2" stroke="#2b9560" stroke-width="1.3"/>
+  <text x="361" y="63" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="500">C 처리</text>
+  <rect x="411" y="44" width="105" height="30" rx="5" fill="#d7efe2" stroke="#2b9560" stroke-width="1.3"/>
+  <text x="463" y="63" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="500">A 재개</text>
+  <rect x="518" y="44" width="100" height="30" rx="5" fill="#d7efe2" stroke="#2b9560" stroke-width="1.3"/>
+  <text x="568" y="63" text-anchor="middle" font-size="10.5" fill="#2b9560" font-weight="500">B 재개</text>
+  <text x="636" y="63" font-size="10" fill="#565f6d">쉼 없이 →</text>
+
+  <!-- background waits -->
+  <text x="108" y="118" text-anchor="end" font-size="11" fill="#565f6d">A의 대기</text>
+  <rect x="215" y="102" width="196" height="26" rx="5" fill="#f6e6c8" stroke="#bd7a15" stroke-width="1.3" opacity="0.9"/>
+  <text x="313" y="120" text-anchor="middle" font-size="10" fill="#bd7a15" font-weight="500">LLM 응답 대기 (스레드 밖)</text>
+
+  <text x="108" y="160" text-anchor="end" font-size="11" fill="#565f6d">B의 대기</text>
+  <rect x="312" y="146" width="206" height="26" rx="5" fill="#f6e6c8" stroke="#bd7a15" stroke-width="1.3" opacity="0.9"/>
+  <text x="415" y="164" text-anchor="middle" font-size="10" fill="#bd7a15" font-weight="500">LLM 응답 대기 (스레드 밖)</text>
+
+  <text x="108" y="202" text-anchor="end" font-size="11" fill="#565f6d">C의 대기</text>
+  <rect x="409" y="188" width="150" height="26" rx="5" fill="#f6e6c8" stroke="#bd7a15" stroke-width="1.3" opacity="0.9"/>
+  <text x="484" y="206" text-anchor="middle" font-size="10" fill="#bd7a15" font-weight="500">응답 대기</text>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" width="720" height="540" font-family="'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif" role="img" aria-label="스택 프레임 구조: 낮은 주소의 char buf[64]에 데이터가 넘치면 위쪽(높은 주소)의 저장된 rbp를 지나 return address까지 덮어써서, 함수가 ret할 때 CPU가 공격자 주소로 점프한다">
+  <rect x="0" y="0" width="720" height="540" rx="16" fill="#ffffff" stroke="#d7dbe3"/>
+  <text x="360" y="38" text-anchor="middle" font-size="16" font-weight="700" fill="#1a2029">스택 프레임과 버퍼 오버플로우</text>
+  <text x="360" y="58" text-anchor="middle" font-size="11" fill="#565f6d">handle_request() 함수 하나의 스택 프레임</text>
+
+  <!-- address axis (right) -->
+  <text x="590" y="98" text-anchor="start" font-size="11" font-weight="700" fill="#565f6d">↑ 높은 주소</text>
+  <line x1="600" y1="110" x2="600" y2="430" stroke="#d7dbe3" stroke-width="1.5"/>
+  <text x="590" y="452" text-anchor="start" font-size="11" font-weight="700" fill="#565f6d">↓ 낮은 주소</text>
+  <text x="612" y="275" text-anchor="middle" font-size="9.5" fill="#878f9d" transform="rotate(90 612 275)">스택은 높은→낮은 주소로 자람</text>
+
+  <!-- return address (danger) -->
+  <rect x="250" y="90" width="290" height="58" rx="8" fill="#f6e6c8" stroke="#bd7a15" stroke-width="1.8"/>
+  <text x="395" y="114" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1a2029">return address (복귀 주소)</text>
+  <text x="395" y="133" text-anchor="middle" font-size="10.5" fill="#bd7a15" font-weight="600">ret이 PC에 넣을 값 — 공격 최종 목표 </text>
+
+  <!-- saved rbp -->
+  <rect x="250" y="154" width="290" height="46" rx="8" fill="#f5f7fa" stroke="#d7dbe3" stroke-width="1.5"/>
+  <text x="395" y="182" text-anchor="middle" font-size="12" font-weight="500" fill="#565f6d">저장된 rbp (이전 프레임 정보)</text>
+
+  <!-- buffer -->
+  <rect x="250" y="206" width="290" height="216" rx="8" fill="#dce9fa" stroke="#1f6fd0" stroke-width="1.6"/>
+  <text x="395" y="230" text-anchor="middle" font-size="13" font-weight="700" fill="#1a2029">char buf[64]</text>
+  <line x1="266" y1="244" x2="524" y2="244" stroke="#b9cdec" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="395" y="262" text-anchor="middle" font-size="10.5" fill="#565f6d">buf[63]  ← 높은 주소 쪽 (return address에 가까움)</text>
+  <line x1="266" y1="330" x2="524" y2="330" stroke="#b9cdec" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="395" y="352" text-anchor="middle" font-size="10.5" fill="#565f6d">…</text>
+  <text x="395" y="404" text-anchor="middle" font-size="10.5" fill="#565f6d">buf[0]   ← 낮은 주소 쪽 (여기서부터 채워짐)</text>
+
+  <!-- overflow arrow (left, amber, pointing up) -->
+  <defs>
+    <marker id="sf-up" viewBox="0 0 10 10" refX="5" refY="2" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,10 L5,0 L10,10 z" fill="#bd7a15"/>
+    </marker>
+  </defs>
+  <line x1="212" y1="410" x2="212" y2="96" stroke="#bd7a15" stroke-width="3" marker-end="url(#sf-up)"/>
+
+  <!-- left annotations aligned to boxes -->
+  <text x="40" y="404" font-size="11.5" fill="#bd7a15" font-weight="700">① buf에 데이터 씀</text>
+  <text x="40" y="420" font-size="10" fill="#565f6d">buf[0]→[63] 채워짐</text>
+  <text x="60" y="182" font-size="11.5" fill="#bd7a15" font-weight="700">② rbp 넘어</text>
+  <text x="55" y="120" font-size="11.5" fill="#bd7a15" font-weight="700">③ return address</text>
+  <text x="70" y="136" font-size="11.5" fill="#bd7a15" font-weight="700">덮어씀 </text>
+
+  <!-- bottom: consequence -->
+  <rect x="60" y="466" width="600" height="48" rx="10" fill="#fbf1dd" stroke="#bd7a15" stroke-width="1.3"/>
+  <text x="360" y="486" text-anchor="middle" font-size="11.5" fill="#1a2029" font-weight="600">함수가 ret 하는 순간 → CPU는 덮어써진 값을 "복귀 주소"라 믿고 PC에 넣음</text>
+  <text x="360" y="504" text-anchor="middle" font-size="11.5" fill="#bd7a15" font-weight="700">→ PC가 공격자 코드로 점프 (프로그램 납치)</text>
+</svg>
